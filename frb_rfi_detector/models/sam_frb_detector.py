@@ -147,26 +147,14 @@ class SAMFRBDetector(nn.Module):
         """
         if self.sam_available:
             # Encode image with SAM encoder
+            # Output shape: (B, 256, 64, 64) for ViT-B/L or (B, 256, 64, 64) for all
             image_embeddings = self.image_encoder(x)
 
-            # Prepare prompts (use automatic prompting)
-            B = x.shape[0]
-            sparse_embeddings = torch.zeros((B, 0, 256), device=x.device)
-            dense_embeddings = torch.zeros((B, 256, 64, 64), device=x.device)
+            # Apply our custom segmentation head directly to encoder output
+            # This bypasses SAM's prompt-based mask decoder
+            masks = self.segmentation_head(image_embeddings)
 
-            # Decode
-            low_res_masks, _ = self.mask_decoder(
-                image_embeddings=image_embeddings,
-                image_pe=self.prompt_encoder.get_dense_pe(),
-                sparse_prompt_embeddings=sparse_embeddings,
-                dense_prompt_embeddings=dense_embeddings,
-                multimask_output=False,
-            )
-
-            # Apply segmentation head
-            masks = self.segmentation_head(low_res_masks)
-
-            # Upsample to input size
+            # Upsample to input size (1024, 1024)
             masks = F.interpolate(masks, size=(1024, 1024), mode='bilinear', align_corners=False)
 
         else:
