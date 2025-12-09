@@ -17,9 +17,9 @@ from typing import Dict
 import json
 from datetime import datetime
 
-from models.sam_frb_detector import SAMFRBDetector, FRBDetectionLoss
-from dataset import FRBRFIDataModule
-from utils.metrics import compute_metrics
+from .models.sam_frb_detector import SAMFRBDetector, FRBDetectionLoss
+from .dataset import FRBRFIDataModule
+from .utils.metrics import compute_metrics
 
 
 class Trainer:
