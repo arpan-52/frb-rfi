@@ -13,6 +13,10 @@ Supports:
 import numpy as np
 import pandas as pd
 from typing import Tuple, Optional, List
+import warnings
+
+# Suppress pandas FutureWarning about DataFrame concatenation
+warnings.filterwarnings('ignore', category=FutureWarning, module='pandas')
 
 
 class RFISimulator:
