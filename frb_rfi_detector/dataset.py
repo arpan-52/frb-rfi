@@ -11,7 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 from typing import Tuple, Optional, Dict, List
 import os
 
-from data_generator import FRBRFIDataGenerator
+from .data_generator import FRBRFIDataGenerator
 
 
 class FRBRFIDataset(Dataset):

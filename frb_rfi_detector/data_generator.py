@@ -16,8 +16,8 @@ import numpy as np
 from typing import Tuple, Dict, Optional, List
 import warnings
 
-from frb_simulator import FRBSimulator
-from rfi_simulator import RFISimulator
+from .frb_simulator import FRBSimulator
+from .rfi_simulator import RFISimulator
 
 
 class FRBRFIDataGenerator:

@@ -376,7 +376,6 @@ def main():
         mode='min',
         factor=0.5,
         patience=5,
-        verbose=True,
     )
 
     # Create trainer
