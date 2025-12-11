@@ -92,9 +92,69 @@ def read_filterbank(filename: str) -> Tuple[np.ndarray, Dict]:
             raise ImportError("Please install sigpyproc or your: pip install sigpyproc-python OR pip install your")
 
 
+def extract_frequency_range(data: np.ndarray, metadata: Dict,
+                           target_fmin: float = 300.0, target_fmax: float = 500.0) -> np.ndarray:
+    """
+    Extract a specific frequency range from filterbank data.
+
+    Parameters:
+        data (np.ndarray): Input data (freq, time)
+        metadata (Dict): Filterbank metadata with fch1, foff, nchans
+        target_fmin (float): Target minimum frequency in MHz
+        target_fmax (float): Target maximum frequency in MHz
+
+    Returns:
+        np.ndarray: Extracted frequency range
+    """
+    fch1 = metadata['fch1']  # Top frequency (0th channel)
+    foff = metadata['foff']  # Channel width (negative if decreasing)
+    nchans = metadata['nchans']
+
+    # Create frequency array for all channels
+    freqs = fch1 + np.arange(nchans) * foff
+
+    print(f"Original filterbank:")
+    print(f"  Frequency range: {freqs.min():.2f} - {freqs.max():.2f} MHz")
+    print(f"  Channel 0: {fch1:.2f} MHz")
+    print(f"  Channel width: {foff:.4f} MHz")
+
+    # Find channels within target range
+    # We want freqs between target_fmin and target_fmax
+    if foff < 0:  # Frequencies decreasing
+        mask = (freqs >= target_fmin) & (freqs <= target_fmax)
+    else:  # Frequencies increasing
+        mask = (freqs >= target_fmin) & (freqs <= target_fmax)
+
+    indices = np.where(mask)[0]
+
+    if len(indices) == 0:
+        raise ValueError(f"No channels found in range {target_fmin}-{target_fmax} MHz!")
+
+    # Extract channels
+    extracted = data[indices, :]
+
+    print(f"Extracted frequency range {target_fmin}-{target_fmax} MHz:")
+    print(f"  Channels: {indices[0]} to {indices[-1]} ({len(indices)} channels)")
+    print(f"  Actual range: {freqs[indices[0]]:.2f} - {freqs[indices[-1]]:.2f} MHz")
+
+    # Check if we need to flip (model expects high freq first)
+    # If fch1 is at top and foff is negative, it's already high->low (correct)
+    # If fch1 is at bottom and foff is positive, we need to flip
+    first_freq = freqs[indices[0]]
+    last_freq = freqs[indices[-1]]
+
+    if first_freq < last_freq:
+        print(f"  Flipping frequency axis (low->high to high->low)")
+        extracted = np.flip(extracted, axis=0)
+    else:
+        print(f"  Frequency order correct (high->low)")
+
+    return extracted
+
+
 def downsample_frequency(data: np.ndarray, target_channels: int = 1024) -> np.ndarray:
     """
-    Downsample frequency channels from 4096 to 1024.
+    Downsample frequency channels to target number.
 
     Parameters:
         data (np.ndarray): Input data (freq, time)
@@ -111,10 +171,15 @@ def downsample_frequency(data: np.ndarray, target_channels: int = 1024) -> np.nd
     # Simple averaging downsampling
     factor = n_freq // target_channels
 
-    # Reshape and average
-    downsampled = data[:target_channels * factor, :].reshape(target_channels, factor, n_time).mean(axis=1)
-
-    print(f"Downsampled from {n_freq} to {target_channels} channels (factor: {factor})")
+    if factor < 1:
+        # Need to upsample - just repeat
+        factor = target_channels // n_freq
+        downsampled = np.repeat(data, factor, axis=0)[:target_channels, :]
+        print(f"Upsampled from {n_freq} to {target_channels} channels (factor: {factor})")
+    else:
+        # Downsample by averaging
+        downsampled = data[:target_channels * factor, :].reshape(target_channels, factor, n_time).mean(axis=1)
+        print(f"Downsampled from {n_freq} to {target_channels} channels (factor: {factor})")
 
     return downsampled
 
@@ -421,9 +486,13 @@ def process_filterbank(filterbank_path: str, model_path: str, output_dir: str,
     print(f"\nReading filterbank: {filterbank_path}")
     data, metadata = read_filterbank(filterbank_path)
 
+    # Extract 300-500 MHz range (matching training data)
+    print(f"\nExtracting 300-500 MHz frequency range...")
+    data_extracted = extract_frequency_range(data, metadata, target_fmin=300.0, target_fmax=500.0)
+
     # Downsample frequency to 1024 channels
     print(f"\nDownsampling frequency channels...")
-    data_downsampled = downsample_frequency(data, target_channels=1024)
+    data_downsampled = downsample_frequency(data_extracted, target_channels=1024)
 
     # Extract chunks
     print(f"\nExtracting chunks...")
@@ -446,8 +515,8 @@ def process_filterbank(filterbank_path: str, model_path: str, output_dir: str,
         if frb_pixels > 50 and frb_prob_max > detection_threshold:
             print(f"FRB DETECTED! ({frb_pixels} pixels, max prob: {frb_prob_max:.3f})")
 
-            # Estimate DM
-            freq_range = (metadata['fch1'], metadata['fch1'] + metadata['foff'] * metadata['nchans'])
+            # Estimate DM (using 300-500 MHz range, high freq first)
+            freq_range = (500.0, 300.0)  # (fmax, fmin) - model expects high freq first
             dm_estimate = estimate_dm_from_detection(chunk, prediction, freq_range, metadata['tsamp'])
 
             if dm_estimate is not None:
