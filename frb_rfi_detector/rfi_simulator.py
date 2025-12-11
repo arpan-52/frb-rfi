@@ -33,10 +33,10 @@ class RFISimulator:
 
     def __init__(
         self,
-        freq_min: float = 550.0,
-        freq_max: float = 750.0,
+        freq_min: float = 300.0,
+        freq_max: float = 500.0,
         n_freq_channels: int = 1024,
-        n_time_bins: int = 1024,
+        n_time_bins: int = 2048,
         time_resolution: float = 1.3,
     ):
         self.freq_min = freq_min

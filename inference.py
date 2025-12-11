@@ -513,14 +513,20 @@ def process_filterbank(filterbank_path: str, model_path: str, output_dir: str,
         frb_prob_max = probabilities[2].max()
 
         if frb_pixels > 50 and frb_prob_max > detection_threshold:
-            print(f"FRB DETECTED! ({frb_pixels} pixels, max prob: {frb_prob_max:.3f})")
-
             # Estimate DM (using 300-500 MHz range, high freq first)
             freq_range = (500.0, 300.0)  # (fmax, fmin) - model expects high freq first
             dm_estimate = estimate_dm_from_detection(chunk, prediction, freq_range, metadata['tsamp'])
 
-            if dm_estimate is not None:
+            # Filter by DM range (model trained on DM 100-200)
+            if dm_estimate is not None and 100 <= dm_estimate <= 200:
+                print(f"FRB DETECTED! ({frb_pixels} pixels, max prob: {frb_prob_max:.3f})")
                 print(f"    Estimated DM: {dm_estimate:.1f} pc/cm³")
+            elif dm_estimate is not None:
+                print(f"Candidate rejected (DM={dm_estimate:.1f} outside 100-200 range)")
+                continue  # Skip this detection
+            else:
+                print(f"Candidate rejected (DM estimation failed)")
+                continue  # Skip this detection
 
             # Save detection plot
             plot_path = output_path / f"detection_chunk_{i:04d}.png"

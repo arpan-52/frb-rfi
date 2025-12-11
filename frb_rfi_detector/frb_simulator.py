@@ -23,10 +23,10 @@ class FRBSimulator:
 
     def __init__(
         self,
-        freq_min: float = 550.0,  # MHz
-        freq_max: float = 750.0,  # MHz
+        freq_min: float = 300.0,  # MHz (updated for 300-500 MHz training)
+        freq_max: float = 500.0,  # MHz
         n_freq_channels: int = 1024,
-        n_time_bins: int = 1024,
+        n_time_bins: int = 2048,  # Increased for better DM 100-200 coverage
         time_resolution: float = 1.3,  # ms
     ):
         self.freq_min = freq_min
@@ -66,8 +66,9 @@ class FRBSimulator:
         freq_ghz = freq / 1000.0
         ref_freq_ghz = ref_freq / 1000.0
 
-        # Dispersion delay formula
-        delay = 4.15 * dm * ((ref_freq_ghz ** -2) - (freq_ghz ** -2))
+        # Dispersion delay formula (corrected)
+        # Lower frequencies arrive LATER, so delay is positive when freq < ref_freq
+        delay = 4.15 * dm * ((freq_ghz ** -2) - (ref_freq_ghz ** -2))
 
         return delay
 
