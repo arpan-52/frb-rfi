@@ -476,7 +476,7 @@ def process_filterbank(filterbank_path: str, model_path: str, output_dir: str,
     # Load model
     print(f"\nLoading model from {model_path}...")
     model = SAMFRBDetector(model_type='vit_b', num_classes=3)
-    checkpoint = torch.load(model_path, map_location=device)
+    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint['model_state_dict'])
     model = model.to(device)
     model.eval()
