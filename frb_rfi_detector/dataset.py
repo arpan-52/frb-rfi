@@ -103,6 +103,12 @@ class FRBRFIDataset(Dataset):
         # Normalize spectrum to [0, 1] range
         spectrum_norm = self.normalize_spectrum(spectrum)
 
+        # Resize to 1024×1024 if needed (SAM requires square input)
+        if spectrum_norm.shape != (1024, 1024):
+            import cv2
+            spectrum_norm = cv2.resize(spectrum_norm, (1024, 1024), interpolation=cv2.INTER_LINEAR)
+            mask = cv2.resize(mask.astype(np.float32), (1024, 1024), interpolation=cv2.INTER_NEAREST).astype(np.uint8)
+
         # Convert to RGB format (SAM expects 3-channel images)
         # Repeat grayscale across 3 channels
         image = np.stack([spectrum_norm, spectrum_norm, spectrum_norm], axis=0)
