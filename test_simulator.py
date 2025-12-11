@@ -65,7 +65,7 @@ for i, dm in enumerate(test_dms):
         print(f"  ✗ ERROR: Dispersion direction is WRONG!")
 
     ax = axes[i]
-    im = ax.imshow(frb, aspect='auto', origin='lower', cmap='hot',
+    im = ax.imshow(frb, aspect='auto', origin='upper', cmap='hot',
                    extent=[0, sim.n_time_bins, sim.freq_min, sim.freq_max])
     ax.set_xlabel('Time (bins)')
     ax.set_ylabel('Frequency (MHz)')
@@ -100,7 +100,7 @@ print(f"Number of RFI sources: {len(rfi_table)}")
 print(f"RFI types: {rfi_table['rfi_type'].value_counts().to_dict()}")
 
 plt.figure(figsize=(12, 8))
-plt.imshow(rfi, aspect='auto', origin='lower', cmap='viridis',
+plt.imshow(rfi, aspect='auto', origin='upper', cmap='viridis',
            extent=[0, rfi_sim.n_time_bins, rfi_sim.freq_min, rfi_sim.freq_max])
 plt.xlabel('Time (bins)')
 plt.ylabel('Frequency (MHz)')
@@ -144,7 +144,7 @@ for col, (title, config) in enumerate(scenarios):
 
     # Plot spectrum
     ax = axes[0, col]
-    im = ax.imshow(spectrum, aspect='auto', origin='lower', cmap='viridis',
+    im = ax.imshow(spectrum, aspect='auto', origin='upper', cmap='viridis',
                    extent=[0, spectrum.shape[1], 300, 500])
     ax.set_xlabel('Time (bins)')
     ax.set_ylabel('Frequency (MHz)')
@@ -155,7 +155,7 @@ for col, (title, config) in enumerate(scenarios):
     ax = axes[1, col]
     colors = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 1]])
     mask_rgb = colors[mask]
-    ax.imshow(mask_rgb, aspect='auto', origin='lower',
+    ax.imshow(mask_rgb, aspect='auto', origin='upper',
               extent=[0, mask.shape[1], 300, 500])
     ax.set_xlabel('Time (bins)')
     ax.set_ylabel('Frequency (MHz)')

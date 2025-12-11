@@ -47,7 +47,7 @@ def plot_waterfall(
     im = ax.imshow(
         dynamic_spectrum,
         aspect='auto',
-        origin='lower',
+        origin='upper',
         cmap=cmap,
         extent=extent,
         vmin=vmin,
@@ -105,7 +105,7 @@ def plot_segmentation_comparison(
 
     # Plot spectrum
     ax = axes[0]
-    im = ax.imshow(spectrum, aspect='auto', origin='lower', cmap='viridis', extent=extent)
+    im = ax.imshow(spectrum, aspect='auto', origin='upper', cmap='viridis', extent=extent)
     ax.set_xlabel('Time (ms)')
     ax.set_ylabel('Frequency (MHz)')
     ax.set_title('Dynamic Spectrum')
@@ -114,7 +114,7 @@ def plot_segmentation_comparison(
     # Plot ground truth
     ax = axes[1]
     gt_rgb = colors[ground_truth]
-    ax.imshow(gt_rgb, aspect='auto', origin='lower', extent=extent)
+    ax.imshow(gt_rgb, aspect='auto', origin='upper', extent=extent)
     ax.set_xlabel('Time (ms)')
     ax.set_ylabel('Frequency (MHz)')
     ax.set_title('Ground Truth')
@@ -122,7 +122,7 @@ def plot_segmentation_comparison(
     # Plot prediction
     ax = axes[2]
     pred_rgb = colors[prediction]
-    ax.imshow(pred_rgb, aspect='auto', origin='lower', extent=extent)
+    ax.imshow(pred_rgb, aspect='auto', origin='upper', extent=extent)
     ax.set_xlabel('Time (ms)')
     ax.set_ylabel('Frequency (MHz)')
     ax.set_title('Prediction')
@@ -247,7 +247,7 @@ def plot_examples(
 
         # Spectrum
         ax = axes[0]
-        im = ax.imshow(spectrum, aspect='auto', origin='lower', cmap='viridis', extent=extent)
+        im = ax.imshow(spectrum, aspect='auto', origin='upper', cmap='viridis', extent=extent)
         ax.set_xlabel('Time (ms)')
         ax.set_ylabel('Frequency (MHz)')
         ax.set_title('Dynamic Spectrum (Noise + RFI + FRB)')
@@ -255,7 +255,7 @@ def plot_examples(
 
         # Mask
         ax = axes[1]
-        ax.imshow(mask_rgb, aspect='auto', origin='lower', extent=extent)
+        ax.imshow(mask_rgb, aspect='auto', origin='upper', extent=extent)
         ax.set_xlabel('Time (ms)')
         ax.set_ylabel('Frequency (MHz)')
         ax.set_title('Ground Truth Labels')

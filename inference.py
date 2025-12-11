@@ -372,7 +372,7 @@ def plot_detection(chunk: np.ndarray, prediction: np.ndarray, probabilities: np.
 
     # Plot 1: Original data
     ax = axes[0, 0]
-    im = ax.imshow(chunk, aspect='auto', origin='lower', cmap='viridis', extent=extent)
+    im = ax.imshow(chunk, aspect='auto', origin='upper', cmap='viridis', extent=extent)
     ax.set_xlabel('Time (ms)')
     ax.set_ylabel('Frequency (MHz)')
     ax.set_title('Filterbank Data')
@@ -386,7 +386,7 @@ def plot_detection(chunk: np.ndarray, prediction: np.ndarray, probabilities: np.
         [0, 1, 1],      # FRB
     ])
     mask_rgb = colors[prediction]
-    ax.imshow(mask_rgb, aspect='auto', origin='lower', extent=extent)
+    ax.imshow(mask_rgb, aspect='auto', origin='upper', extent=extent)
     ax.set_xlabel('Time (ms)')
     ax.set_ylabel('Frequency (MHz)')
 
@@ -406,7 +406,7 @@ def plot_detection(chunk: np.ndarray, prediction: np.ndarray, probabilities: np.
 
     # Plot 3: FRB probability
     ax = axes[1, 0]
-    im = ax.imshow(probabilities[2], aspect='auto', origin='lower', cmap='hot',
+    im = ax.imshow(probabilities[2], aspect='auto', origin='upper', cmap='hot',
                    extent=extent, vmin=0, vmax=1)
     ax.set_xlabel('Time (ms)')
     ax.set_ylabel('Frequency (MHz)')
