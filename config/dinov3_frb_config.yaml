@@ -1,0 +1,168 @@
+# DINOv3 FRB Detection Configuration
+
+# Model Configuration
+model:
+  backbone: "dinov2_vitg14"  # Options: dinov2_vits14, dinov2_vitb14, dinov2_vitl14, dinov2_vitg14
+  pretrained: true
+  embed_dim: 1536  # ViT-g: 1536, ViT-l: 1024, ViT-b: 768, ViT-s: 384
+
+  # Freezing strategy
+  freeze_backbone: true  # Start with frozen backbone
+  unfreeze_last_n_blocks: 0  # Set to 4, 8, 12 etc. to unfreeze last N transformer blocks
+  use_lora: false  # Use LoRA for efficient fine-tuning (recommended if unfreeze_last_n_blocks > 8)
+  lora_rank: 16
+  lora_alpha: 32
+
+  # Detection head
+  head:
+    hidden_dims: [512, 128]
+    dropout: 0.1
+    activation: "relu"
+    outputs:
+      detection:
+        type: "binary_classification"  # FRB present or not
+        loss_weight: 1.0
+      dm_regression:
+        type: "regression"
+        loss_weight: 0.5
+        range: [30, 2000]  # DM range in pc/cm³
+
+# Data Configuration
+data:
+  # Image dimensions
+  image_size: [4096, 4096]  # [freq_channels, time_bins]
+
+  # Frequency configuration
+  frequency:
+    min: 300  # MHz
+    max: 500  # MHz
+    channels: 4096  # Number of frequency channels
+
+  # Time configuration
+  time:
+    resolution: 1.3  # ms - time resolution per bin
+    bins: 4096  # Number of time bins in training images
+    adaptive_resolution: false  # Keep false for Option B (full resolution)
+
+  # Dispersion Measure (DM) configuration
+  dispersion:
+    dm_min: 30      # Minimum DM in pc/cm³
+    dm_max: 2000    # Maximum DM in pc/cm³
+    sampling: "log_uniform"  # Options: "uniform", "log_uniform"
+    dm_distribution_weights:  # Weight sampling towards certain ranges
+      - [30, 200, 0.4]    # 40% samples from DM 30-200
+      - [200, 500, 0.3]   # 30% samples from DM 200-500
+      - [500, 1000, 0.2]  # 20% samples from DM 500-1000
+      - [1000, 2000, 0.1] # 10% samples from DM 1000-2000
+
+  # FRB configuration
+  frb:
+    snr_range: [5, 50]  # Signal-to-noise ratio range
+    width_range: [1, 10]  # FRB width in ms
+    intensity_profile: "gaussian"  # Options: "gaussian", "exponential", "flat"
+
+    # Full sweep + sliding window strategy
+    generate_full_sweep: true  # Generate full DM sweep (may be > 4096 bins)
+    window_sampling: "random"  # How to extract 4096 windows from full sweep
+                               # Options: "random", "center", "start", "end"
+    partial_sweep_probability: 0.7  # 70% of samples have partial sweeps (for high DM)
+
+  # RFI configuration (reuse from SAM-RFI)
+  rfi:
+    enabled: true
+    probability: 0.8  # 80% of samples include RFI
+    patterns:
+      - "persistent_freq_gaussian"
+      - "persistent_freq_square"
+      - "persistent_time_gaussian"
+      - "persistent_time_square"
+      - "intermittent_gaussian"
+      - "intermittent_square"
+    num_patterns_range: [1, 4]  # Number of RFI patterns per sample
+
+  # Noise configuration
+  noise:
+    type: "gaussian"
+    mean: 0.0
+    std: 1.0
+
+# Training Configuration
+training:
+  # Basic settings
+  batch_size: 4  # 4× 4096×4096 images should fit in H100 80GB
+  num_epochs: 50
+  num_workers: 8
+  pin_memory: true
+
+  # Optimizer
+  optimizer:
+    type: "adamw"
+    lr: 1e-4  # Learning rate for head
+    backbone_lr: 1e-5  # Learning rate for backbone (if unfrozen)
+    weight_decay: 0.01
+    betas: [0.9, 0.999]
+
+  # Scheduler
+  scheduler:
+    type: "cosine"  # Options: "cosine", "step", "reduce_on_plateau"
+    warmup_epochs: 5
+    min_lr: 1e-6
+
+  # Mixed precision
+  mixed_precision: true
+
+  # Loss weights
+  loss:
+    detection_weight: 1.0
+    dm_regression_weight: 0.5
+    dm_loss_type: "smooth_l1"  # Options: "mse", "l1", "smooth_l1"
+
+  # Checkpointing
+  save_every: 5  # Save checkpoint every N epochs
+  save_best_only: true
+  monitor_metric: "val_detection_acc"  # Options: "val_loss", "val_detection_acc", "val_dm_mae"
+
+  # Validation
+  val_split: 0.15
+  val_every: 1  # Validate every N epochs
+
+  # Data generation
+  samples_per_epoch: 10000  # Generate N samples per epoch
+  cache_samples: false  # Set true to cache generated samples (needs lots of RAM)
+
+# Inference Configuration
+inference:
+  # Chunk processing
+  chunk_size: 4096  # Time bins per chunk
+  overlap: 2048  # Overlap between chunks (50%)
+
+  # Frequency extraction
+  target_freq_min: 300  # MHz - extract this range from filterbank
+  target_freq_max: 500  # MHz
+  target_freq_channels: 4096  # Resample to this many channels
+
+  # Detection thresholds
+  detection_threshold: 0.5  # Probability threshold for FRB detection
+  min_dm: 30  # Reject detections outside DM range
+  max_dm: 2000
+  dm_tolerance: 50  # Accept DM within ±50 of expected range
+
+  # Filterbank handling
+  auto_flip_frequency: true  # Automatically detect and flip frequency axis if needed
+
+  # Output
+  save_plots: true
+  plot_format: "png"
+  save_detections_json: true
+
+# Paths
+paths:
+  output_dir: "outputs/dinov3"
+  checkpoint_dir: "outputs/dinov3/checkpoints"
+  log_dir: "outputs/dinov3/logs"
+
+# Experiment tracking
+experiment:
+  name: "dinov3_frb_detector"
+  tags: ["dinov3", "frb", "rfi"]
+  notes: "DINOv3-based FRB detection with full sweep simulation"
