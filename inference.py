@@ -92,6 +92,47 @@ def read_filterbank(filename: str) -> Tuple[np.ndarray, Dict]:
             raise ImportError("Please install sigpyproc or your: pip install sigpyproc-python OR pip install your")
 
 
+def normalize_bandpass(data: np.ndarray) -> np.ndarray:
+    """
+    Normalize filterbank data by the bandpass (average frequency spectrum).
+
+    This removes the telescope's frequency-dependent response by dividing each
+    frequency channel by its mean value across time. This is critical for
+    ensuring the model sees only the signals, not the instrument response.
+
+    Parameters:
+        data (np.ndarray): Input data (freq, time)
+
+    Returns:
+        np.ndarray: Bandpass-normalized data (freq, time)
+    """
+    n_freq, n_time = data.shape
+
+    # Calculate bandpass (mean spectrum across time)
+    bandpass = np.mean(data, axis=1, keepdims=True)  # Shape: (n_freq, 1)
+
+    # Avoid division by zero or very small values
+    # Use median as a robust threshold
+    median_bandpass = np.median(bandpass)
+    threshold = median_bandpass * 0.01  # 1% of median
+
+    # Replace zeros/small values with threshold
+    bandpass_safe = np.where(bandpass < threshold, threshold, bandpass)
+
+    # Normalize: divide each channel by its mean
+    normalized = data / bandpass_safe
+
+    # Remove any NaN or Inf that might have crept in
+    normalized = np.nan_to_num(normalized, nan=1.0, posinf=1.0, neginf=1.0)
+
+    print(f"Bandpass normalization applied:")
+    print(f"  Bandpass range: {bandpass.min():.2e} - {bandpass.max():.2e}")
+    print(f"  Normalized range: {normalized.min():.2f} - {normalized.max():.2f}")
+    print(f"  Mean after normalization: {normalized.mean():.3f} (should be ~1.0)")
+
+    return normalized
+
+
 def extract_frequency_range(data: np.ndarray, metadata: Dict,
                            target_fmin: float = 550.0, target_fmax: float = 750.0) -> np.ndarray:
     """
@@ -506,6 +547,7 @@ def process_filterbank(filterbank_path: str, model_path: str, output_dir: str,
     Process a filterbank file and detect FRBs.
 
     The pipeline automatically adapts the filterbank data to match training parameters:
+    - Normalizes by bandpass (removes telescope frequency response)
     - Extracts 550-750 MHz frequency range
     - Resamples time resolution to 1.3 ms (training resolution)
     - Downsamples frequency to 1024 channels
@@ -542,9 +584,13 @@ def process_filterbank(filterbank_path: str, model_path: str, output_dir: str,
     print(f"\nReading filterbank: {filterbank_path}")
     data, metadata = read_filterbank(filterbank_path)
 
+    # Normalize by bandpass (remove telescope frequency response)
+    print(f"\nNormalizing by bandpass...")
+    data_normalized = normalize_bandpass(data)
+
     # Extract 550-750 MHz range (matching training data)
     print(f"\nExtracting 550-750 MHz frequency range...")
-    data_extracted = extract_frequency_range(data, metadata, target_fmin=550.0, target_fmax=750.0)
+    data_extracted = extract_frequency_range(data_normalized, metadata, target_fmin=550.0, target_fmax=750.0)
 
     # Downsample frequency to 1024 channels
     print(f"\nDownsampling frequency channels...")
