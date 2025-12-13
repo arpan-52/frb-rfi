@@ -23,8 +23,8 @@ class FRBSimulator:
 
     def __init__(
         self,
-        freq_min: float = 300.0,  # MHz (updated for 300-500 MHz training)
-        freq_max: float = 500.0,  # MHz
+        freq_min: float = 550.0,  # MHz (training range: 550-750 MHz)
+        freq_max: float = 750.0,  # MHz
         n_freq_channels: int = 1024,
         n_time_bins: int = 2048,  # Increased for better DM 100-200 coverage
         time_resolution: float = 1.3,  # ms

@@ -93,7 +93,7 @@ def read_filterbank(filename: str) -> Tuple[np.ndarray, Dict]:
 
 
 def extract_frequency_range(data: np.ndarray, metadata: Dict,
-                           target_fmin: float = 300.0, target_fmax: float = 500.0) -> np.ndarray:
+                           target_fmin: float = 550.0, target_fmax: float = 750.0) -> np.ndarray:
     """
     Extract a specific frequency range from filterbank data.
 
@@ -486,9 +486,9 @@ def process_filterbank(filterbank_path: str, model_path: str, output_dir: str,
     print(f"\nReading filterbank: {filterbank_path}")
     data, metadata = read_filterbank(filterbank_path)
 
-    # Extract 300-500 MHz range (matching training data)
-    print(f"\nExtracting 300-500 MHz frequency range...")
-    data_extracted = extract_frequency_range(data, metadata, target_fmin=300.0, target_fmax=500.0)
+    # Extract 550-750 MHz range (matching training data)
+    print(f"\nExtracting 550-750 MHz frequency range...")
+    data_extracted = extract_frequency_range(data, metadata, target_fmin=550.0, target_fmax=750.0)
 
     # Downsample frequency to 1024 channels
     print(f"\nDownsampling frequency channels...")
@@ -513,8 +513,8 @@ def process_filterbank(filterbank_path: str, model_path: str, output_dir: str,
         frb_prob_max = probabilities[2].max()
 
         if frb_pixels > 50 and frb_prob_max > detection_threshold:
-            # Estimate DM (using 300-500 MHz range, high freq first)
-            freq_range = (500.0, 300.0)  # (fmax, fmin) - model expects high freq first
+            # Estimate DM (using 550-750 MHz range, high freq first)
+            freq_range = (750.0, 550.0)  # (fmax, fmin) - model expects high freq first
             dm_estimate = estimate_dm_from_detection(chunk, prediction, freq_range, metadata['tsamp'])
 
             # Filter by DM range (model trained on DM 100-200)
