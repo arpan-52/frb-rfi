@@ -184,6 +184,55 @@ def downsample_frequency(data: np.ndarray, target_channels: int = 1024) -> np.nd
     return downsampled
 
 
+def resample_time(data: np.ndarray, current_tsamp: float, target_tsamp: float = 1.3) -> np.ndarray:
+    """
+    Resample time axis to match target time resolution.
+
+    Parameters:
+        data (np.ndarray): Input data (freq, time)
+        current_tsamp (float): Current time resolution in ms
+        target_tsamp (float): Target time resolution in ms (default: 1.3 ms for training)
+
+    Returns:
+        np.ndarray: Resampled data (freq, new_time)
+    """
+    from scipy import signal
+
+    n_freq, n_time = data.shape
+
+    # Check if resampling is needed
+    if abs(current_tsamp - target_tsamp) < 0.01:  # Within 0.01 ms tolerance
+        print(f"Time resolution {current_tsamp:.3f} ms matches target {target_tsamp:.3f} ms (no resampling needed)")
+        return data
+
+    # Calculate new number of time bins
+    # If current_tsamp < target_tsamp: we need fewer bins (downsample)
+    # If current_tsamp > target_tsamp: we need more bins (upsample)
+    total_time = n_time * current_tsamp  # Total observation time in ms
+    new_n_time = int(total_time / target_tsamp)
+
+    print(f"Resampling time axis:")
+    print(f"  Current: {n_time} bins × {current_tsamp:.3f} ms = {total_time:.1f} ms total")
+    print(f"  Target:  {new_n_time} bins × {target_tsamp:.3f} ms = {new_n_time * target_tsamp:.1f} ms total")
+
+    if new_n_time < 10:
+        raise ValueError(f"Resampling would result in too few time bins ({new_n_time}). Need longer observation.")
+
+    # Resample each frequency channel
+    resampled = np.zeros((n_freq, new_n_time))
+
+    for i in range(n_freq):
+        # Use scipy's resample which applies a Fourier method
+        resampled[i, :] = signal.resample(data[i, :], new_n_time)
+
+    if current_tsamp < target_tsamp:
+        print(f"  → Downsampled from {current_tsamp:.3f} ms to {target_tsamp:.3f} ms")
+    else:
+        print(f"  → Upsampled from {current_tsamp:.3f} ms to {target_tsamp:.3f} ms")
+
+    return resampled
+
+
 def normalize_chunk(chunk: np.ndarray, percentile: float = 99.5) -> np.ndarray:
     """
     Normalize a data chunk to [0, 1] range.
@@ -456,13 +505,20 @@ def process_filterbank(filterbank_path: str, model_path: str, output_dir: str,
     """
     Process a filterbank file and detect FRBs.
 
+    The pipeline automatically adapts the filterbank data to match training parameters:
+    - Extracts 550-750 MHz frequency range
+    - Resamples time resolution to 1.3 ms (training resolution)
+    - Downsamples frequency to 1024 channels
+    - Ensures high→low frequency ordering
+    - Creates 1024×1024 patches for model input
+
     Parameters:
         filterbank_path (str): Path to filterbank file
         model_path (str): Path to trained model checkpoint
         output_dir (str): Directory to save results
-        chunk_size (int): Size of processing chunks
-        overlap (int): Overlap between chunks
-        detection_threshold (float): Probability threshold for FRB detection
+        chunk_size (int): Size of processing chunks (default: 1024)
+        overlap (int): Overlap between chunks (default: 256)
+        detection_threshold (float): Probability threshold for FRB detection (default: 0.5)
         device (str): Device to use ('cuda' or 'cpu')
     """
     print("="*70)
@@ -494,9 +550,20 @@ def process_filterbank(filterbank_path: str, model_path: str, output_dir: str,
     print(f"\nDownsampling frequency channels...")
     data_downsampled = downsample_frequency(data_extracted, target_channels=1024)
 
+    # Resample time resolution to match training (1.3 ms)
+    print(f"\nResampling time resolution...")
+    target_tsamp = 1.3  # ms - training resolution
+    data_resampled = resample_time(data_downsampled, metadata['tsamp'], target_tsamp)
+
+    # Update metadata with new time resolution
+    original_tsamp = metadata['tsamp']
+    metadata['tsamp'] = target_tsamp
+    metadata['nsamples'] = data_resampled.shape[1]
+    print(f"  Updated metadata: tsamp={metadata['tsamp']:.3f} ms, nsamples={metadata['nsamples']}")
+
     # Extract chunks
     print(f"\nExtracting chunks...")
-    chunks = extract_chunks(data_downsampled, chunk_size=chunk_size, overlap=overlap)
+    chunks = extract_chunks(data_resampled, chunk_size=chunk_size, overlap=overlap)
 
     # Process each chunk
     print(f"\nProcessing {len(chunks)} chunks...")
